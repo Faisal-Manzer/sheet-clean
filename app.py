@@ -1,52 +1,61 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, jsonify, request, Response
+from werkzeug.utils import secure_filename
+import os
+
 import pyexcel as pe
+from geo import GeoText
 import phonenumbers
 from phonenumbers import geocoder
 import re
-import os
-from werkzeug.utils import secure_filename
-
+import pycountry
 
 app = Flask(__name__)
+
 app.config['UPLOAD_FOLDER'] = 'xlsx'
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['ALLOWED_EXTENSIONS'] = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'xlsx'])
+
+name_fields = {
+    'number': 'Number',
+    'address': 'Address'
+}
+
+filename = ''
 
 main_file_path = ''
 main_save_path = ''
 
+check_fields = {
+    'country_code': False,
+    'number': False,
+    'number_country': False,
+
+    'city': False,
+    'add_country': False
+}
+
+app.config['ALLOWED_EXTENSIONS'] = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'xlsx'])
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 
 @app.route('/')
 def hello_world():
-    return render_template("home.html")
+    return render_template("index.html")
 
 
-@app.route('/upload', methods=['POST'])
+@app.route('/uploadfile', methods=['POST'])
 def upload():
     if request.method == 'POST':
-        f = request.files['ex']
-        filename = secure_filename(f.filename)
-        up_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        f.save(up_path)
-        return 'file uploaded successfully'
-    else:
-        return False
-
-
-@app.route('/ajax', methods=['POST'])
-def ajax():
-    email = request.form['email']
-    name = request.form['name']
-
-    if email and name:
-        newName = name[::-1]
-
-        return jsonify({'name': newName})
-    return jsonify({'error': 'Missing Data'})
-
+        files = request.files['file']
+        if files and allowed_file(files.filename):
+            filename = secure_filename(files.filename)
+            app.logger.info('FileName: ' + filename)
+            updir = os.path.join(basedir, 'xlsx/')
+            file_path = os.path.join(updir, filename)
+            files.save(file_path)
+            return jsonify(status='ok', mess=filename)
+        else:
+            return jsonify(status='err', mess='File Type not Allowed')
 
 @app.route('/getfile/<name>')
 def get_output_file(name):
@@ -56,95 +65,184 @@ def get_output_file(name):
     # read without gzip.open to keep it compressed
     with open(file_name, 'rb') as f:
         resp = Response(f.read())
+    os.remove(file_name)
     # set headers to tell encoding and to send as an attachment
     resp.headers["Content-Disposition"] = "attachment; filename={0}".format(name)
     resp.headers["Content-type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return resp
 
+@app.route('/processfile', methods=['POST'])
+def process():
+    global name_fields
+    global check_fields
+    global filename
+    global main_file_path
+    global main_save_path
 
-@app.route('/uploadajax', methods=['POST'])
-def upldfile():
+    if request.method == 'POST':
+        try:
+            f = request.form
+
+            if not f['number'] == '':
+                name_fields['number'] = f['number']
+            if not f['address'] == '':
+                name_fields['address'] = f['address']
+
+            if 'numCountryCode' in f:
+                check_fields['country_code'] = True
+            if 'numNumber' in f:
+                check_fields['number'] = True
+            if 'countryName' in f:
+                check_fields['number_country'] = True
+
+            if 'city' in f:
+                check_fields['city'] = True
+            if 'addressCountry' in f:
+                check_fields['add_country'] = True
+
+            filename = f['filename']
+
+            main_save_path = os.path.join(basedir, 'clean/', "clean_" + filename)
+            main_file_path = os.path.join(basedir, 'xlsx/', filename)
+
+            try:
+                clean()
+                return jsonify(status='ok', mess="/getfile/clean_"+filename,
+                               mainpath=main_file_path,
+                               main_save_path=main_save_path,
+                               numberf=name_fields['number'],
+                               address=name_fields['address'],
+                               checkcc=check_fields['country_code'],
+                               checknum=check_fields['number'],
+                               checknumcon=check_fields['number_country'],
+                               city=check_fields['city'],
+                               addcon=check_fields['add_country']
+                               )
+            except Exception as err:
+                app.logger.info(err)
+
+                return jsonify(
+                    status='err',
+                    mess='Plz Remove Formatting From File !',
+                    mainpath=main_file_path,
+                    main_save_path=main_save_path,
+                    numberf=name_fields['number'],
+                    address=name_fields['address'],
+                    checkcc=check_fields['country_code'],
+                    checknum=check_fields['number'],
+                    checknumcon=check_fields['number_country'],
+                    city=check_fields['city'],
+                    addcon=check_fields['add_country']
+                )
+        except:
+            return jsonify(status='err', mess='Unknown Error',
+                           mainpath=main_file_path,
+                           main_save_path=main_save_path,
+                           numberf=name_fields['number'],
+                           address=name_fields['address'],
+                           checkcc=check_fields['country_code'],
+                           checknum=check_fields['number'],
+                           checknumcon=check_fields['number_country'],
+                           city=check_fields['city'],
+                           addcon=check_fields['add_country']
+                           )
+
+
+def clean():
+    global name_fields
+    global check_fields
+    global filename
     global main_save_path
     global main_file_path
-    if request.method == 'POST':
-        files = request.files['file']
-        if files and allowed_file(files.filename):
-            filename = secure_filename(files.filename)
-            app.logger.info('FileName: ' + filename)
-            updir = os.path.join(basedir, 'xlsx/')
-            file_path = os.path.join(updir, filename)
-            main_file_path = file_path
-            main_save_path = os.path.join(basedir, 'clean/', "clean_"+filename)
-            files.save(file_path)
-            file_size = os.path.getsize(file_path)
-            process_file()
-            return jsonify(url="/getfile/clean_"+filename, size=file_size)
 
-
-def process_file():
     split_it = re.compile('[0-9+\- ]+')
     is_plus = re.compile('^\+.+')
 
     sheet = pe.get_sheet(file_name=main_file_path, name_columns_by_row=0)
     major_col = sheet.column
 
-    new_col = [['Country Code', 'National Number', 'Number Country']]
+    app.logger.info('Sheet: ' + main_save_path)
 
-    print("Strarting")
+    new_col = []
+
+    columns = []
+    if check_fields['country_code']:
+        columns += ['Country Code']
+    if check_fields['number']:
+        columns += ['Number']
+    if check_fields['number_country']:
+        columns += ['Country Name']
+
+    if check_fields['city']:
+        columns += ['City']
+    if check_fields['add_country']:
+        columns += ['Country']
+
+    new_col += [columns]
+
+    app.logger.info("this  h")
+    app.logger.info(new_col)
+
+
     for i in range(0, len(major_col['Name'])):
-        numbers = str(major_col['Mobile'][i])
 
         col = []
 
-        number_country_code = 'N/A'
-        number_num = ''
-        number_country_name = 'N/A'
-
-        splited_number = re.findall(split_it, numbers)
-
-        number_country_code_arr = []
-        number_num_arr = []
-        number_country_name_arr = []
-
-        for number in splited_number:
-            match_plus = is_plus.match(number)
+        if check_fields['add_country'] or check_fields['city']:
             try:
-                if match_plus:
-                    num = phonenumbers.parse(number, None)
-
-                else:
-                    num = phonenumbers.parse(number, 'IN')
-                number_country_code_arr += [str(num.country_code)]
-                number_num_arr += [str(num.national_number)]
-                number_country_name_arr = [str(geocoder.country_name_for_number(num, 'en'))]
+                address = str(major_col[name_fields['address']][i])
+                geox = GeoText(address)
+                cities = geox.cities
+                if check_fields['city']:
+                    col += [str(cities[0])]
+                if check_fields['add_country']:
+                    country_str = ''
+                    for c in geox.country_mentions:
+                        country_str += pycountry.countries.get(alpha_2=c).name + ", "
+                    col += [country_str[0:-2]]
             except:
                 pass
 
-            number_country_code = ", ".join(number_country_code_arr)
-            number_num = ", ".join(number_num_arr)
-            number_country_name = ", ".join(number_country_name_arr)
 
-            if len(number_num_arr) == 1:
-                number_country_code = int(number_country_code)
-                number_num = int(number_num)
+        if check_fields['country_code'] or check_fields['number'] or check_fields['number_country']:
+            numbers = str(major_col[name_fields['number']][i])
 
-            # if len(number_num_arr) > 1:
-            #     number_country_code = ", ".join(number_country_code_arr)
-            #     number_num = ", ".join(number_num_arr)
-            #     number_country_name = ", ".join(number_country_name_arr)
-            # else:
-            #     try:
-            #         number_country_code = int(number_country_code_arr)
-            #         number_num = int(number_num_arr)
-            #     except:
-            #         pass
+            splited_number = re.findall(split_it, numbers)
 
-        col = [
-            number_country_code,
-            number_num,
-            number_country_name
-        ]
+            number_country_code_arr = []
+            number_num_arr = []
+            number_country_name_arr = []
 
+            for number in splited_number:
+                match_plus = is_plus.match(number)
+                try:
+                    if match_plus:
+                        num = phonenumbers.parse(number, None)
+                    else:
+                        num = phonenumbers.parse(number, 'IN')
+                    number_country_code_arr += [str(num.country_code)]
+                    number_num_arr += [str(num.national_number)]
+                    number_country_name_arr = [str(geocoder.country_name_for_number(num, 'en'))]
+                except:
+                    pass
+                number_country_code = 'N/A'
+                number_num = ''
+                number_country_name = 'N/A'
+
+                if len(number_num_arr) > 1:
+                    number_country_code = ", ".join(number_country_code_arr)
+                    number_num = ", ".join(number_num_arr)
+                    number_country_name = ", ".join(number_country_name_arr)
+                elif len(number_country_name_arr) == 1:
+                    number_country_code = int(number_country_code_arr[0])
+                    number_num = int(number_num_arr[0])
+                    number_country_name = str(number_country_name_arr)
+                if check_fields['country_code']:
+                    col += [number_country_code]
+                if check_fields['number']:
+                    col += [number_num]
+                if check_fields['number_country']:
+                    col += [number_country_name]
         new_col += [col]
 
     new_sheet = pe.Sheet(new_col)
