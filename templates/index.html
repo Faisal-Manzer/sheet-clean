@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Sheet Clean - aria16</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <style>
+        .col{
+            height: calc(100vh - 63px);
+        }
+        .upload-col{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .light-text{
+            font-weight: lighter;
+        }
+        .medium-text{
+            font-weight: normal;
+        }
+        .bold-text{
+            font-weight: bolder;
+        }
+
+        .input-field input{
+            color: #ffffff;
+        }
+        /* label color */
+       .input-field label {
+         color: #fff;
+       }
+       /* label focus color */
+       .input-field input[type=text]:focus + label {
+         color: #ff9800 !important;
+       }
+       /* label underline focus color */
+       .input-field input[type=text]:focus {
+         border-bottom: 1px solid #ff9800 !important;
+         box-shadow: 0 1px 0 0 #ff9800 !important;
+       }
+       /* valid color */
+       .input-field input[type=text].valid {
+         border-bottom: 1px solid #000;
+         box-shadow: 0 1px 0 0 #000;
+       }
+       /* invalid color */
+       .input-field input[type=text].invalid {
+         border-bottom: 1px solid #000;
+         box-shadow: 0 1px 0 0 #000;
+       }
+       /* icon prefix focus color */
+       .input-field .prefix.active {
+         color: #fff;
+       }
+
+       .dz-preview{
+           display: none;
+       }
+
+        @media screen and (min-width: 600px) {
+            body{
+                overflow: hidden;
+            }
+            footer{
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="grey darken-4 blue-grey-text text-lighten-4">
+<nav class="black z-depth-0">
+    <div class="nav-wrapper">
+        <a href="#" class="brand-logo center"><span class="medium-text">Sheet</span><span class="light-text grey-text">Clean</span><span class="hide-on-small-only light-text orange-text">&nbsp;&nbsp;aria<span class="bold-text">16</span></span></a>
+    </div>
+</nav>
+<main>
+    <div class="row">
+        <div class="col s12 m6 l6 upload-col">
+            <div class="container">
+                <div class="card grey lighten-4" id="dropFile">
+                    <form action="/uploadfile" class="" id="uploadFile">
+                        <div class="fallback">
+                            <input name="file" type="file" />
+                        </div>
+                        <div class="card-content black-text center">
+                          <p id="largeShow" class="">
+                              <i class="fas fa-upload fa-10x"></i>
+                              <br />
+                              <br />
+                          </p>
+                            <p>
+                                <div class="progress hide">
+                                      <div class="determinate" style="width: 0%" id="progressBar"></div>
+                                </div>
+                            </p>
+                            <div id="helpText">
+                                <h4 class="hide-on-small-only">Drop <span class="orange-text">.xlsx</span> File Here</h4>
+                                <h4 class="hide-on-med-and-up">Select <span class="orange-text">.xlsx</span> File</h4>
+                            </div>
+                            <div id="uploadText" class="hide">
+                                <h4 class="">Uploading <span id="percentText">0</span>% done</h4>
+                            </div>
+                            <div id="processText" class="hide">
+                                <h4 class="">Processing</h4>
+                            </div>
+                            <div id="errText" class="hide">
+                                <h4 class="">Error: <span id="errMess"></span></h4>
+                            </div>
+                            <div id="doneText" class="hide">
+                                <h4 class="">Cleaned !!!</h4>
+                            </div>
+                        </div>
+                    </form>
+                  </div>
+            </div>
+        </div>
+        <div class="col s12 m6 l6 upload-col">
+            <div class="container">
+                <form class="white-text" id="options" action="/processfile" method="post">
+                    <h3 class="orange-text">Options</h3>
+                    <br />
+                    <input type="hidden" id="filename" value="" name="filename">
+                    <div class="input-field">
+                        <input placeholder="Number" id="number" type="text" class="validate" name="number" value="Number">
+                        <label for="first_name">Contact Number Field</label>
+                    </div>
+                    <p>
+                        <label>
+                            <input type="checkbox" class="filled-in" checked="checked" name="numCountryCode" id="numCountryCode" />
+                            <span>Country Code</span>
+                        </label>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="checkbox" class="filled-in" checked="checked" name="numNumber" id="numNumber" />
+                            <span>Number</span>
+                        </label>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="checkbox" class="filled-in" checked="checked" name="countryName" id="countryName" />
+                            <span>Country Name</span>
+                        </label>
+                    </p>
+                    <br />
+                    <div class="input-field">
+                        <input placeholder="Address" id="address" type="text" class="validate" name="address" value="Address">
+                        <label for="first_name">Address Field</label>
+                    </div>
+                    <p>
+                        <label>
+                            <input type="checkbox" class="filled-in" checked="checked" name="city" id="city" />
+                            <span>City</span>
+                        </label>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="checkbox" class="filled-in" checked="checked" name="addressCountry" id="addressCountry" />
+                            <span>Country</span>
+                        </label>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="black center">
+    <div class="footer-copyright">
+        <div class="container">
+            <span class="orange-text">&copy; aria16 2018</span> <a href="https://github.com/Faisal-Manzer/sheet-clean" class="grey-text">Sheet Clean v0.0.1beta-2</a><br />
+            Made with <i class="fa fa-heart red-text"></i> by <a href="https://faisal-manzer.in" class="orange-text" target="_blank">Faisal Manzer</a> for <a href="https://www.reniso.com/" class="orange-text" target="_blank">Reniso</a>
+        </div>
+    </div>
+</footer>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+<script src="{{ url_for('static', filename='dz.js') }}"></script>
+<script src="{{ url_for('static', filename='js.js') }}"></script>
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css">
+</body>
+</html>
