@@ -10,6 +10,7 @@ MarkupSafe==1.0
 openpyxl==2.5.3
 phonenumbers==8.9.7
 py3dns==3.1.0
+pycountry==18.5.26
 pyexcel==0.5.8
 pyexcel-io==0.5.7
 pyexcel-xlsx==0.5.6
