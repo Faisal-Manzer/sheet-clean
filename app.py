@@ -86,8 +86,8 @@ def upload():
 
 @app.route('/getfile/<name>')
 def get_output_file(name):
-    file_name = os.path.join('clean/', name)
-    file_name_up = os.path.join('xlsx/', name)
+    file_name = os.path.join(basedir, 'clean/', name)
+    file_name_up = os.path.join(basedir, 'xlsx/', name)
     if not os.path.isfile(file_name):
         return jsonify({"message": "still processing"})
     # read without gzip.open to keep it compressed
