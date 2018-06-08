@@ -87,12 +87,14 @@ def upload():
 @app.route('/getfile/<name>')
 def get_output_file(name):
     file_name = os.path.join('clean/', name)
+    file_name_up = os.path.join('xlsx/', name)
     if not os.path.isfile(file_name):
         return jsonify({"message": "still processing"})
     # read without gzip.open to keep it compressed
     with open(file_name, 'rb') as f:
         resp = Response(f.read())
     os.remove(file_name)
+    os.remove(file_name_up)
     # set headers to tell encoding and to send as an attachment
     resp.headers["Content-Disposition"] = "attachment; filename={0}".format(name)
     resp.headers["Content-type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
