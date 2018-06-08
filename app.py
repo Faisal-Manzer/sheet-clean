@@ -87,7 +87,7 @@ def upload():
 @app.route('/getfile/<name>')
 def get_output_file(name):
     file_name = os.path.join(basedir, 'clean/', name)
-    file_name_up = os.path.join(basedir, 'xlsx/', name)
+    file_name_up = os.path.join(basedir, 'xlsx/', name[6:])
     if not os.path.isfile(file_name):
         return jsonify({"message": "still processing"})
     # read without gzip.open to keep it compressed
@@ -99,6 +99,7 @@ def get_output_file(name):
     resp.headers["Content-Disposition"] = "attachment; filename={0}".format(name)
     resp.headers["Content-type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return resp
+
 
 @app.route('/processfile', methods=['POST'])
 def process():
