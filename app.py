@@ -38,6 +38,32 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 
+def reset():
+    global name_fields
+    global filename
+    global main_save_path
+    global main_file_path
+    global check_fields
+
+    name_fields = {
+        'number': 'Number',
+        'address': 'Address'
+    }
+
+    filename = ''
+
+    main_file_path = ''
+    main_save_path = ''
+
+    check_fields = {
+        'country_code': False,
+        'number': False,
+        'number_country': False,
+
+        'city': False,
+        'add_country': False
+    }
+
 @app.route('/')
 def hello_world():
     return render_template("index.html")
@@ -46,6 +72,7 @@ def hello_world():
 @app.route('/uploadfile', methods=['POST'])
 def upload():
     if request.method == 'POST':
+        reset()
         files = request.files['file']
         if files and allowed_file(files.filename):
             filename = secure_filename(files.filename)
@@ -78,6 +105,8 @@ def process():
     global filename
     global main_file_path
     global main_save_path
+
+    reset()
 
     if request.method == 'POST':
         try:
@@ -134,7 +163,8 @@ def process():
                     city=check_fields['city'],
                     addcon=check_fields['add_country']
                 )
-        except:
+        except Exception as err:
+            app.logger.info(err)
             return jsonify(status='err', mess='Unknown Error',
                            mainpath=main_file_path,
                            main_save_path=main_save_path,
@@ -166,6 +196,12 @@ def clean():
     new_col = []
 
     columns = []
+
+    if check_fields['city']:
+        columns += ['City']
+    if check_fields['add_country']:
+        columns += ['Country']
+
     if check_fields['country_code']:
         columns += ['Country Code']
     if check_fields['number']:
@@ -173,16 +209,10 @@ def clean():
     if check_fields['number_country']:
         columns += ['Country Name']
 
-    if check_fields['city']:
-        columns += ['City']
-    if check_fields['add_country']:
-        columns += ['Country']
-
     new_col += [columns]
 
     app.logger.info("this  h")
     app.logger.info(new_col)
-
 
     for i in range(0, len(major_col['Name'])):
 
@@ -190,62 +220,93 @@ def clean():
 
         if check_fields['add_country'] or check_fields['city']:
             try:
+                city_added = False
+                add_country_added = False
                 address = str(major_col[name_fields['address']][i])
-                geox = GeoText(address)
+                geox = GeoText(address.title())
                 cities = geox.cities
+                app.logger.info(cities)
                 if check_fields['city']:
-                    col += [str(cities[0])]
+                    if len(cities) > 0:
+                        if not str(cities[0]) == '':
+                            col += [str(cities[0])]
+                        else:
+                            col += ['N/A']
+                    else:
+                        col += ['N/A']
                 if check_fields['add_country']:
                     country_str = ''
                     for c in geox.country_mentions:
                         country_str += pycountry.countries.get(alpha_2=c).name + ", "
-                    col += [country_str[0:-2]]
-            except:
-                pass
-
+                    temp_kuch_str = country_str[0:-2]
+                    if not temp_kuch_str == '':
+                        col += [temp_kuch_str]
+                    else:
+                        col += ['N/A']
+            except Exception as err:
+                app.logger.info(err)
 
         if check_fields['country_code'] or check_fields['number'] or check_fields['number_country']:
-            numbers = str(major_col[name_fields['number']][i])
+            try:
+                numbers = str(major_col[name_fields['number']][i])
 
-            splited_number = re.findall(split_it, numbers)
+                splited_number = re.findall(split_it, numbers)
 
-            number_country_code_arr = []
-            number_num_arr = []
-            number_country_name_arr = []
+                number_country_code_arr = []
+                number_num_arr = []
+                number_country_name_arr = []
 
-            for number in splited_number:
-                match_plus = is_plus.match(number)
-                try:
-                    if match_plus:
-                        num = phonenumbers.parse(number, None)
-                    else:
-                        num = phonenumbers.parse(number, 'IN')
-                    number_country_code_arr += [str(num.country_code)]
-                    number_num_arr += [str(num.national_number)]
-                    number_country_name_arr = [str(geocoder.country_name_for_number(num, 'en'))]
-                except:
-                    pass
-                number_country_code = 'N/A'
-                number_num = ''
-                number_country_name = 'N/A'
+                for number in splited_number:
+                    match_plus = is_plus.match(number)
+                    try:
+                        if match_plus:
+                            num = phonenumbers.parse(number, None)
+                        else:
+                            num = phonenumbers.parse(number, 'IN')
+                        number_country_code_arr += [str(num.country_code)]
+                        number_num_arr += [str(num.national_number)]
+                        number_country_name_arr = [str(geocoder.country_name_for_number(num, 'en'))]
+                    except Exception as err:
+                        app.logger.info(err)
 
-                if len(number_num_arr) > 1:
-                    number_country_code = ", ".join(number_country_code_arr)
-                    number_num = ", ".join(number_num_arr)
-                    number_country_name = ", ".join(number_country_name_arr)
-                elif len(number_country_name_arr) == 1:
-                    number_country_code = int(number_country_code_arr[0])
-                    number_num = int(number_num_arr[0])
-                    number_country_name = str(number_country_name_arr)
-                if check_fields['country_code']:
-                    col += [number_country_code]
-                if check_fields['number']:
-                    col += [number_num]
-                if check_fields['number_country']:
-                    col += [number_country_name]
+                    for j in range(0, len(number_num_arr)):
+                        if check_fields['country_code']:
+                            col += [int(number_country_code_arr[j])]
+                        if check_fields['number']:
+                            col += [int(number_num_arr[j])]
+                        if check_fields['number_country']:
+                            col += [str(number_country_name_arr[j])]
+                    if len(number_num_arr) == 0:
+                        if check_fields['country_code']:
+                            col += ['N/A']
+                        if check_fields['number']:
+                            col += ['N/A']
+                        if check_fields['number_country']:
+                            col += ['N/A']
+
+                    # if len(number_num_arr) > 1:
+                    #     number_country_code = ", ".join(number_country_code_arr)
+                    #     number_num = ", ".join(number_num_arr)
+                    #     number_country_name = ", ".join(number_country_name_arr)
+                    # if len(number_num_arr) == 1:
+                    #     number_country_code = int(number_country_code_arr[0])
+                    #     number_num = int(number_num_arr[0])
+                    #     number_country_name = str(number_country_name_arr[0])
+                    # if check_fields['country_code']:
+                    #     col += [number_country_code]
+                    # if check_fields['number']:
+                    #     col += [number_num]
+                    # if check_fields['number_country']:
+                    #     col += [number_country_name]
+            except Exception as err:
+                app.logger.info(err)
+
         new_col += [col]
 
     new_sheet = pe.Sheet(new_col)
     sheet.column += new_sheet
 
     sheet.save_as(main_save_path)
+
+if __name__ == '__main__':
+    app.run(debug=True)
