@@ -151,7 +151,7 @@ def process():
                                addcon=check_fields['add_country']
                                )
             except Exception as err:
-                app.logger.info(err)
+                app.logger.info('clean error'+err)
 
                 return jsonify(
                     status='err',
@@ -167,7 +167,7 @@ def process():
                     addcon=check_fields['add_country']
                 )
         except Exception as err:
-            app.logger.info(err)
+            app.logger.info('Form',  err)
             return jsonify(status='err', mess='Unknown Error',
                            mainpath=main_file_path,
                            main_save_path=main_save_path,
@@ -247,7 +247,7 @@ def clean():
                     else:
                         col += ['N/A']
             except Exception as err:
-                app.logger.info(err)
+                app.logger.info('Address ', err)
 
         if check_fields['country_code'] or check_fields['number'] or check_fields['number_country']:
             try:
@@ -270,7 +270,7 @@ def clean():
                         number_num_arr += [str(num.national_number)]
                         number_country_name_arr = [str(geocoder.country_name_for_number(num, 'en'))]
                     except Exception as err:
-                        app.logger.info(err)
+                        app.logger.info('Matching',err)
 
                     for j in range(0, len(number_num_arr)):
                         if check_fields['country_code']:
@@ -286,21 +286,6 @@ def clean():
                             col += ['N/A']
                         if check_fields['number_country']:
                             col += ['N/A']
-
-                    # if len(number_num_arr) > 1:
-                    #     number_country_code = ", ".join(number_country_code_arr)
-                    #     number_num = ", ".join(number_num_arr)
-                    #     number_country_name = ", ".join(number_country_name_arr)
-                    # if len(number_num_arr) == 1:
-                    #     number_country_code = int(number_country_code_arr[0])
-                    #     number_num = int(number_num_arr[0])
-                    #     number_country_name = str(number_country_name_arr[0])
-                    # if check_fields['country_code']:
-                    #     col += [number_country_code]
-                    # if check_fields['number']:
-                    #     col += [number_num]
-                    # if check_fields['number_country']:
-                    #     col += [number_country_name]
             except Exception as err:
                 app.logger.info(err)
 
